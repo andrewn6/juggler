@@ -6,10 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.71"
-hyper = "0.14.26"
-hyper-tls = "0.5.0"
-rustls = "0.21.0"
-serde = "1.0.160"
-tokio = { version = "1", features = ["full"] }
-tokio-rustls = "0.24.0"
+hyper = { version = "0.14", features = ["full"] }
+tokio = { version = "1.14", features = ["full"] }
+structopt = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+env_logger = "0.10.0"
