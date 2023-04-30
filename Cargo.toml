@@ -10,4 +10,6 @@ anyhow = "1.0.71"
 hyper = "0.14.26"
 hyper-tls = "0.5.0"
 rustls = "0.21.0"
+serde = "1.0.160"
 tokio = { version = "1", features = ["full"] }
+tokio-rustls = "0.24.0"
