@@ -87,6 +87,38 @@ async fn accept_connection(load_balancer: Arc<LoadBalancer> , client: Client<Htt
         });
     }
 }
-fn main() {
-    println!("placeholder")
+
+#[tokio::main]
+async fn main() -> Result<(), String> {
+    let opt = Opt::from_args();
+    env_logger::from_env(Env::default().default_filter_or("info")).init();
+    let listener = TcpListener::bind(format!("localhost:{}", opt.port)).map_err(|e| format!("Failed to bind to port {}: {:?}", opt.port, e))?;
+
+    let load_balancer = Arc::new(LoadBalancer::new(opt.servers));
+
+    let (sender, receiver) = channel::<TcpStream>(1024);
+    let client = Client::new();
+    
+    for i in 0..num_cpus::get() {
+        let receiver = tokio::sync::mpsc::channel(1024).1;
+        let load_balancer = Arc::new(LoadBalancer::new(&opt.servers));
+        let client = client.clone();
+        thread::spawn(move || {
+            let rt = Builder::new_multi_thread()
+                .worker_threads(1)
+                .thread_name(format!("worker-{}", i))
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(accept_connection(load_balancer, client, receiver));
+        });
+
+        info!("spawned worker thread {} ", i)
+    }
+
+    for stream in listener.incoming() {
+        sender.send(stream.map_err(|e| format!("Failed to accept connection: {:?}", e)).unwrap()).await.map_err(|e| format!("Failed to send connection to worker: {:?}", e))?;
+    }
+
+    Ok(())
 }

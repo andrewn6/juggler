@@ -378,6 +378,7 @@ dependencies = [
  "env_logger",
  "hyper",
  "log",
+ "num_cpus",
  "serde",
  "structopt",
  "tokio",
