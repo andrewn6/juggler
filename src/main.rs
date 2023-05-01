@@ -9,7 +9,7 @@ use hyper::{Client, Request, Body, Method};
 use hyper::client::connect::HttpConnector;
 use hyper::header::HeaderValue;
 use tokio::runtime::Builder;
-use tokio::sync::mpsc::{channel, Sender, Receiver};
+use tokio::sync::mpsc::{channel, Receiver};
 use log::{info, error};
 use env_logger::Env;
 
@@ -99,9 +99,11 @@ async fn main() -> Result<(), String> {
     let (sender, receiver) = channel::<TcpStream>(1024);
     let client = Client::new();
     
+    let opt_servers = vec!["server1".to_string(), "server2".to_string(), "server3".to_string()];
+    let servers = opt_servers.clone();
     for i in 0..num_cpus::get() {
         let receiver = tokio::sync::mpsc::channel(1024).1;
-        let load_balancer = Arc::new(LoadBalancer::new(&opt.servers));
+        let load_balancer = Arc::new(LoadBalancer::new(servers.clone()));
         let client = client.clone();
         thread::spawn(move || {
             let rt = Builder::new_multi_thread()
