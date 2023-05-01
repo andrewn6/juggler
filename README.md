@@ -30,6 +30,4 @@ Currently this tool is very basic and only supports the `round robin` algorithm,
 
 `juggler -p 3000 -s http://localhost:8000 -s http://localhost:8001`
 
-I also want to upport more load balancing algorithms, more specifically:
-    - weighted round robin
-    - least connection
+I also want to upport more load balancing algorithms, more specifically least connection & weighted round robin
