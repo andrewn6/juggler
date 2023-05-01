@@ -26,7 +26,9 @@ Start the load balancing server
 
 ## Roadmap
 
-Currently this tool is very basic and only supports the `round robin` algorithm, I also want to make a CLI out of this so you can download it and use it locally on your system to test your application like this: `juggler -p 3000 -s http://localhost:8000 -s http://localhost:8001`
+Currently this tool is very basic and only supports the `round robin` algorithm, I also want to make a CLI out of this so you can download it and use it locally on your system to test your application like this: 
+
+`juggler -p 3000 -s http://localhost:8000 -s http://localhost:8001`
 
 I also want to upport more load balancing algorithms, more specifically:
     - weighted round robin
