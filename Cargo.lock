@@ -317,6 +317,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "453ad9f582a441959e5f0d088b02ce04cfe8d51a8eaf077f12ac6d3e94164ca6"
 
 [[package]]
+name = "juggler"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "hyper",
+ "log",
+ "num_cpus",
+ "serde",
+ "structopt",
+ "tokio",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -369,19 +382,6 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.45.0",
-]
-
-[[package]]
-name = "ntunnel"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "hyper",
- "log",
- "num_cpus",
- "serde",
- "structopt",
- "tokio",
 ]
 
 [[package]]
