@@ -40,7 +40,7 @@ fn App() -> Html {
 #[derive(StructOpt)]
 #[structopt(name = "load_balancer")]
 struct Opt {
-    #[structopt(short = "p", long = "port", default_value = "8080")]
+    #[structopt(short = "p", long = "port", default_value = "8000")]
     port: u16,
     #[structopt(
         short = "s",
@@ -167,7 +167,7 @@ async fn accept_connection(
 
 #[tokio::main]
 async fn main() -> Result<(), String> {
-    yew::Renderer::<App>::new().render();
+    //yew::Renderer::<App>::new().render();
     
     // Main logic, uses handle_request and runs load balancer
     let opt = Opt::from_args();
