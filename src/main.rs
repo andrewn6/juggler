@@ -3,6 +3,7 @@ use std::io::{Write, Read};
 use std::thread;
 use std::sync::{Arc, Mutex};
 use hyper::body::HttpBody;
+use hyper::http::response;
 use structopt::StructOpt;
 use serde::Deserialize;
 use hyper::{Client, Request, Body, Method};
@@ -20,6 +21,8 @@ struct Opt {
     port: u16,
     #[structopt(short = "s", long = "servers", default_value = "http://localhost:8081,http://localhost:8082")]
     servers: Vec<String>,
+    #[structopt(short = "w" , long = "weights", default_value = "1,1")]
+    weights: Vec<usize>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -29,21 +32,31 @@ struct RequestData {
 
 struct LoadBalancer {
     servers: Vec<String>,
+    weights: Vec<usize>,
     current: Mutex<usize>,
+    counter: Mutex<usize>,
 }
 
 impl LoadBalancer {
-    fn new(servers: Vec<String>) -> LoadBalancer {
+    fn new(servers: Vec<String>, weights: Vec<usize>) -> LoadBalancer {
         LoadBalancer {
             servers,
+            weights,
             current: Mutex::new(0),
+            counter: Mutex::new(0),
         }
     }
 
     fn get_server(&self) -> String {
         let mut current = self.current.lock().unwrap();
+        let mut counter = self.counter.lock().unwrap();
+        *counter += 1;
+
+        if *counter >= self.weights[*current] {
+            *counter = 0;
+            *current = (*current + 1) % self.servers.len();
+        }
         let server = self.servers[*current].clone();
-        *current = (*current + 1) % self.servers.len();
         server
     }
 }
@@ -60,7 +73,9 @@ async fn proxy_request(client: &Client<HttpConnector>, server: &str, request: Re
     Ok(response_str)
 }
 
-async fn handle_request(load_balancer: Arc<LoadBalancer>, client:Client<HttpConnector>, mut stream: TcpStream) -> Result <(), String> {
+async fn handle_request
+(load_balancer: Arc<LoadBalancer>, client:Client<HttpConnector>, mut stream: TcpStream) 
+-> Result <(), String> {
     let mut buffer = [0; 1024];
     stream.read(&mut buffer).map_err(|e| format!("Failed to read from stream: {}", e))?;
     let request_str = String::from_utf8_lossy(&buffer[..]).to_string();
@@ -71,12 +86,27 @@ async fn handle_request(load_balancer: Arc<LoadBalancer>, client:Client<HttpConn
         .body(Body::from(request_str.clone()))
         .map_err(|e| format!("Failed to build request: {}", e))?;
     let server = load_balancer.get_server();
-    let response_str = proxy_request(&client, &server, request).await?;
-    let response = format!("{} response from server {}: {} \n", request_str, server, response_str);
+    let response_str = match proxy_request(&client, &server, request).await {
+        Ok(response) => response,
+        Err(e) => {
+            error!("Error in proxy request: {}", e);
+            return Err(format!("Error in proxy request: {}", e));
+        }
+    };
+
+    let response_data: RequestData = serde_json::from_str(&response_str).map_err(|e| format!("Failed to parse response: {}", e))?;
+    let response_message = response_data.message;
+    let response = format!("Response from server {}:\n", response_message);
     stream.write(response.as_bytes()).map_err(|e| format!("Failed to write to stream: {}", e))?;
+
     Ok(())
 }
-async fn accept_connection(load_balancer: Arc<LoadBalancer> , client: Client<HttpConnector>, mut receiver: Receiver<TcpStream>) {
+
+async fn accept_connection(
+    load_balancer: Arc<LoadBalancer>,
+    client: Client<HttpConnector>,
+    mut receiver: Receiver<TcpStream>,
+) {
     while let Some(stream) = receiver.recv().await {
         let load_balancer = load_balancer.clone();
         let client = client.clone();
@@ -94,8 +124,6 @@ async fn main() -> Result<(), String> {
     env_logger::from_env(Env::default().default_filter_or("info")).init();
     let listener = TcpListener::bind(format!("localhost:{}", opt.port)).map_err(|e| format!("Failed to bind to port {}: {:?}", opt.port, e))?;
 
-    let load_balancer = Arc::new(LoadBalancer::new(opt.servers));
-
     let (sender, receiver) = channel::<TcpStream>(1024);
     let client = Client::new();
     
@@ -103,7 +131,7 @@ async fn main() -> Result<(), String> {
     let servers = opt_servers.clone();
     for i in 0..num_cpus::get() {
         let receiver = tokio::sync::mpsc::channel(1024).1;
-        let load_balancer = Arc::new(LoadBalancer::new(servers.clone()));
+        let load_balancer = Arc::new(LoadBalancer::new(servers.clone(), vec![]));
         let client = client.clone();
         thread::spawn(move || {
             let rt = Builder::new_multi_thread()
@@ -118,8 +146,8 @@ async fn main() -> Result<(), String> {
         info!("spawned worker thread {} ", i)
     }
 
-    for stream in listener.incoming() {
-        sender.send(stream.map_err(|e| format!("Failed to accept connection: {:?}", e)).unwrap()).await.map_err(|e| format!("Failed to send connection to worker: {:?}", e))?;
+    while let Ok(stream) = listener.accept() {
+        sender.send(stream.0).await.map_err(|e| format!("Failed to send connection to worker: {:?}", e))?;
     }
 
     Ok(())

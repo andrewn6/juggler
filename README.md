@@ -2,7 +2,7 @@
 
 Experimental load balancer tool, distributes incoming traffic accross multiple backend servers.
 
-It is written in Rust using (Hyper)[https://hyper.rs] library.
+It is written in Rust using [Hyper](https://hyper.rs) library.
 
 ## Install
 *Make sure rust is installed before using Juggler!*
