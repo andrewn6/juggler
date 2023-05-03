@@ -3,7 +3,6 @@ use std::io::{Write, Read};
 use std::thread;
 use std::sync::{Arc, Mutex};
 use hyper::body::HttpBody;
-use hyper::http::response;
 use structopt::StructOpt;
 use serde::Deserialize;
 use hyper::{Client, Request, Body, Method};
@@ -62,7 +61,9 @@ impl LoadBalancer {
 }
 
 /* Proxy request */
-async fn proxy_request(client: &Client<HttpConnector>, server: &str, request: Request<Body>) -> Result<String, String> {
+async fn proxy_request(
+    client: &Client<HttpConnector>, server: &str, request: Request<Body>
+) -> Result<String, String> {
     let mut proxy_request = request;
     *proxy_request.uri_mut() = server.parse().map_err(|e| format!("Invalid URI: {}", e))?;
     proxy_request.headers_mut().insert("host", HeaderValue::from_str(server).unwrap());
@@ -74,8 +75,9 @@ async fn proxy_request(client: &Client<HttpConnector>, server: &str, request: Re
 }
 
 async fn handle_request
-(load_balancer: Arc<LoadBalancer>, client:Client<HttpConnector>, mut stream: TcpStream) 
--> Result <(), String> {
+(
+load_balancer: Arc<LoadBalancer>, client:Client<HttpConnector>, mut stream: TcpStream
+) -> Result <(), String> {
     let mut buffer = [0; 1024];
     stream.read(&mut buffer).map_err(|e| format!("Failed to read from stream: {}", e))?;
     let request_str = String::from_utf8_lossy(&buffer[..]).to_string();
