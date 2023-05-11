@@ -1,1 +1,1 @@
-trunk serve --open
+cd ui && trunk serve --open
